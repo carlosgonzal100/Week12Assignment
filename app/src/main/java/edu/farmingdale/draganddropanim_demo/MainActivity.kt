@@ -43,8 +43,15 @@ class MainActivity : ComponentActivity() {
 // ToDo 3: Change the circle to a rect
 /** finished it, did exactly what was asked*/
 
-// ToDo x: Replace the command right with a image or icon
-// ToDo x: Make this works in landscape mode only
+// ToDo 4: Replace the command right with a image or icon
+/** did what was asked, done*/
+
+// ToDo 5: Make this works in landscape mode only
+/** we can see that the screen orientation in the app manifest is
+ * already set onto landscape mode. this means that the orientation
+ * is locked to landscape mode
+ */
+
 // ToDo x: Rotate the rect around itself
 // ToDo x: Move - translate the rect horizontally and vertically
 // ToDo 8: Add a button to reset the rect to the center of the screen
