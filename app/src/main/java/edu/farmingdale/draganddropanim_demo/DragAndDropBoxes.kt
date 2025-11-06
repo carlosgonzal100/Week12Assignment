@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Icon
@@ -152,13 +153,24 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 .weight(0.8f)
                 .background(Color.Red)
         ) {
-            Icon(
-                imageVector = Icons.Default.Face,
-                contentDescription = "Face",
+
+            //instead of the icon showing a face
+            //i have a box with a color. i kept the 3
+            //of code that the icon had just in case
+            //they were needed. i dont know what it does
+            //but i did what was asked
+            Box(
                 modifier = Modifier
                     .padding(10.dp)
                     .offset(pOffset.x.dp, pOffset.y.dp)
                     .rotate(rtatView)
+
+                    //adds color to the box
+                    .background(Color.Yellow)
+
+                    //defines the boxes shape
+                    .size(60.dp,20.dp)
+
             )
         }
     }

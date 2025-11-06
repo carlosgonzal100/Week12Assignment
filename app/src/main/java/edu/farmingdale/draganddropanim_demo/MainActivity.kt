@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
  * even in the set content, the composable is already set. so this Todo 2 is done automatically
  */
 
-// ToDo x: Change the circle to a rect
+// ToDo 3: Change the circle to a rect
 // ToDo x: Replace the command right with a image or icon
 // ToDo x: Make this works in landscape mode only
 // ToDo x: Rotate the rect around itself
