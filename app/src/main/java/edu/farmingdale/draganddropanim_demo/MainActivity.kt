@@ -24,8 +24,17 @@ class MainActivity : ComponentActivity() {
 
 
 // This should be completed in a group setting
-// ToDo x: Analyze the requirements for Individual Project 3
-// ToDo x: Show the DragAndDropBoxes composable
+// ToDo 1: Analyze the requirements for Individual Project 3
+/**
+ * Todo1: well i ran the program and everything seems off, i see there is a
+ * person off the screen and anything i thouch isnt interactable. this project
+ * needs a way to click and drag items on the screen. This project also need
+ * a recentering or reworking of the screen in order to see all items. The screen
+ * also seems to be locked into the landscape mode. Now i dont know if this is
+ * how its suppossed to be but i will look into it.
+ */
+
+// ToDo 2: Show the DragAndDropBoxes composable
 // ToDo x: Change the circle to a rect
 // ToDo x: Replace the command right with a image or icon
 // ToDo x: Make this works in landscape mode only
