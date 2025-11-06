@@ -101,13 +101,16 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                         enter = scaleIn() + fadeIn(),
                         exit = scaleOut() + fadeOut()
                     ) {
-                        Text(
-                            text = "Right",
-                            fontSize = 40.sp,
-                            color = Color.Red,
-                            fontWeight = FontWeight.Bold,
 
+                        /**reused the icon code that was here. modified it
+                         * a bit and kept the code that the text composable
+                         * had just in case if i needed it.
+                         */
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = "Face",
                             modifier = Modifier
+                                .padding(10.dp)
                                 .fillMaxSize()
                                 .dragAndDropSource {
                                     detectTapGestures(

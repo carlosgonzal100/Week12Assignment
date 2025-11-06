@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
  */
 
 // ToDo 3: Change the circle to a rect
+/** finished it, did exactly what was asked*/
+
 // ToDo x: Replace the command right with a image or icon
 // ToDo x: Make this works in landscape mode only
 // ToDo x: Rotate the rect around itself
