@@ -52,7 +52,15 @@ class MainActivity : ComponentActivity() {
  * is locked to landscape mode
  */
 
-// ToDo x: Rotate the rect around itself
+// ToDo 6: Rotate the rect around itself
+/**i was a bit confused. i did exactly what i was asked.
+ * i implemented code using the android studios website
+ * that causes the rectangle to rotate from its center
+ * no matter what. when i move the icon it moves up and rotates
+ * but then it moves down, rotates for a while, then stops.
+ * i made it rotate on its center so there you go
+ */
+
 // ToDo x: Move - translate the rect horizontally and vertically
 // ToDo 8: Add a button to reset the rect to the center of the screen
 // ToDo 9: Enable certain animation based on the drop event (like up or down)

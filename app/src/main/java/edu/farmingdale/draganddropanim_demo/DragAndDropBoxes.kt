@@ -48,10 +48,22 @@ import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.mimeTypes
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+/**Notes:
+ *
+ * used this to help lock screen orientation:
+ * https://developer.android.com/guide/topics/manifest/activity-element
+ *
+ * found out how to rotate items here:
+ * https://developer.android.com/develop/ui/compose/graphics/draw/modifiers
+ */
 
 //private val rotation = FloatPropKey()
 
@@ -166,7 +178,14 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .padding(10.dp)
                     .offset(pOffset.x.dp, pOffset.y.dp)
-                    .rotate(rtatView)
+
+                    //This guarantees the rectangle will pivot
+                    //from its center no matter what. the origin
+                    //of rotation being the center of the triangle
+                    .graphicsLayer {
+                        rotationZ = rtatView
+                        transformOrigin = TransformOrigin.Center
+                    }
 
                     //adds color to the box
                     .background(Color.Yellow)
