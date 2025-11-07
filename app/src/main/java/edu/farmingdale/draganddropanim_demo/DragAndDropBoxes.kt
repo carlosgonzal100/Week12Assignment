@@ -1,7 +1,8 @@
 @file:OptIn(ExperimentalFoundationApi::class)
 
 package edu.farmingdale.draganddropanim_demo
-
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
 import android.content.ClipData
 import android.content.ClipDescription
 import androidx.compose.animation.AnimatedVisibility
@@ -33,8 +34,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,15 +47,12 @@ import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.mimeTypes
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 /**Notes:
  *
@@ -71,6 +69,12 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun DragAndDropBoxes(modifier: Modifier = Modifier) {
     var isPlaying by remember { mutableStateOf(true) }
+
+    /**added so the rectnagle is centered in the middle of the screen
+     * on any screen no matter what
+     */
+    var target by remember { mutableStateOf(IntOffset.Zero) } // will set to true center later
+
     Column(modifier = Modifier.fillMaxSize()) {
 
         Row(
@@ -82,6 +86,7 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
             var dragBoxIndex by remember {
                 mutableIntStateOf(0)
             }
+
 
             repeat(boxCount) { index ->
                 Box(
@@ -98,9 +103,20 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                             },
                             target = remember {
                                 object : DragAndDropTarget {
+
+                                    //remade the onDrop function to use target
                                     override fun onDrop(event: DragAndDropEvent): Boolean {
                                         isPlaying = !isPlaying
                                         dragBoxIndex = index
+
+                                        // index 0 → Up, 1 → Right, 2 → Down, 3 → Left (move 100 px each time)
+                                        target = when (index) {
+                                            0 -> IntOffset(target.x, target.y - 100) // Up (smaller y)
+                                            1 -> IntOffset(target.x + 100, target.y) // Right (larger x)
+                                            2 -> IntOffset(target.x, target.y + 100) // Down (larger y)
+                                            else -> IntOffset(target.x - 100, target.y) // Left (smaller x)
+                                        }
+
                                         return true
                                     }
                                 }
@@ -124,34 +140,26 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .padding(10.dp)
                                 .fillMaxSize()
-                                .dragAndDropSource {
-                                    detectTapGestures(
-                                        onLongPress = { offset ->
-                                            startTransfer(
-                                                transferData = DragAndDropTransferData(
-                                                    clipData = ClipData.newPlainText(
-                                                        "text",
-                                                        ""
-                                                    )
-                                                )
-                                            )
-                                        }
-                                    )
-                                }
+                                .dragAndDropSource(
+                                    transferData = {
+                                        // Return non-null to start drag; Compose handles long-press for you
+                                        DragAndDropTransferData(
+                                            clipData = ClipData.newPlainText("text", "")
+                                        )
+                                    }
+                                )
                         )
                     }
                 }
             }
         }
 
+        /**made by chat gpt to help translate the rectangle
+         * left right up and down. for to do 7, uses step to
+         * determine where the icon is on to move the rectangle
+         * up down left and right
+         */
 
-        val pOffset by animateIntOffsetAsState(
-            targetValue = when (isPlaying) {
-                true -> IntOffset(130, 300)
-                false -> IntOffset(130, 100)
-            },
-            animationSpec = tween(3000, easing = LinearEasing)
-        )
 
         val rtatView by animateFloatAsState(
             targetValue = if (isPlaying) 360f else 0.0f,
@@ -162,37 +170,47 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 repeatMode = RepeatMode.Restart
             )
         )
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.8f)
                 .background(Color.Red)
         ) {
+            // Rectangle size (keep these in one place)
+            val rectW = 60.dp
+            val rectH = 20.dp
 
-            //instead of the icon showing a face
-            //i have a box with a color. i kept the 3
-            //of code that the icon had just in case
-            //they were needed. i dont know what it does
-            //but i did what was asked
+            // Compute the TRUE center of the red area in PX, then center the rect
+            val density = LocalDensity.current
+            val centerPx = with(density) {
+                val cx = ((maxWidth - rectW) / 2).toPx().toInt()
+                val cy = ((maxHeight - rectH) / 2).toPx().toInt()
+                IntOffset(cx, cy)
+            }
+
+            // Set the starting target to the exact center ONCE
+            LaunchedEffect(Unit) {
+                if (target == IntOffset.Zero) {
+                    target = centerPx
+                }
+            }
+
+            // Animate from current to target
+            val pOffset by animateIntOffsetAsState(
+                targetValue = target,
+                animationSpec = tween(3000, easing = LinearEasing)
+            )
+
+            // The rectangle
             Box(
                 modifier = Modifier
-                    .padding(10.dp)
-                    .offset(pOffset.x.dp, pOffset.y.dp)
-
-                    //This guarantees the rectangle will pivot
-                    //from its center no matter what. the origin
-                    //of rotation being the center of the triangle
+                    .offset(pOffset.x.dp, pOffset.y.dp)   // offset first = true center
                     .graphicsLayer {
                         rotationZ = rtatView
                         transformOrigin = TransformOrigin.Center
                     }
-
-                    //adds color to the box
                     .background(Color.Yellow)
-
-                    //defines the boxes shape
-                    .size(60.dp,20.dp)
-
+                    .size(rectW, rectH)
             )
         }
     }
