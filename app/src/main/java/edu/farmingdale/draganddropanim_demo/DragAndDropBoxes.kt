@@ -22,6 +22,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +37,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,7 +56,6 @@ import androidx.compose.ui.draganddrop.mimeTypes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
@@ -75,6 +80,10 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
      */
     var target by remember { mutableStateOf(IntOffset.Zero) } // will set to true center later
 
+    // Max allowed top-left in PX so the rect stays fully inside the red area
+    var maxXBound by remember { mutableIntStateOf(0) }
+    var maxYBound by remember { mutableIntStateOf(0) }
+
     Column(modifier = Modifier.fillMaxSize()) {
 
         Row(
@@ -87,7 +96,6 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 mutableIntStateOf(0)
             }
 
-
             repeat(boxCount) { index ->
                 Box(
                     modifier = Modifier
@@ -97,26 +105,28 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                         .border(1.dp, Color.Black)
                         .dragAndDropTarget(
                             shouldStartDragAndDrop = { event ->
-                                event
-                                    .mimeTypes()
-                                    .contains(ClipDescription.MIMETYPE_TEXT_PLAIN)
+                                event.mimeTypes().contains(ClipDescription.MIMETYPE_TEXT_PLAIN)
                             },
                             target = remember {
                                 object : DragAndDropTarget {
-
-                                    //remade the onDrop function to use target
                                     override fun onDrop(event: DragAndDropEvent): Boolean {
                                         isPlaying = !isPlaying
                                         dragBoxIndex = index
 
-                                        // index 0 → Up, 1 → Right, 2 → Down, 3 → Left (move 100 px each time)
-                                        target = when (index) {
-                                            0 -> IntOffset(target.x, target.y - 100) // Up (smaller y)
-                                            1 -> IntOffset(target.x + 100, target.y) // Right (larger x)
-                                            2 -> IntOffset(target.x, target.y + 100) // Down (larger y)
-                                            else -> IntOffset(target.x - 100, target.y) // Left (smaller x)
+                                        // Propose the next position in PX (move farther per drop)
+                                        val moveStep = 250 // increase this value to move more
+                                        val next = when (index) {
+                                            0 -> IntOffset(target.x, target.y - moveStep) // Up
+                                            1 -> IntOffset(target.x + moveStep, target.y) // Right
+                                            2 -> IntOffset(target.x, target.y + moveStep) // Down
+                                            else -> IntOffset(target.x - moveStep, target.y) // Left
                                         }
 
+                                        // Clamp using the hoisted bounds (no maxPx scope issue)
+                                        target = IntOffset(
+                                            x = next.x.coerceIn(0, maxXBound),
+                                            y = next.y.coerceIn(0, maxYBound)
+                                        )
                                         return true
                                     }
                                 }
@@ -124,30 +134,44 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    this@Row.AnimatedVisibility(
-                        visible = index == dragBoxIndex,
-                        enter = scaleIn() + fadeIn(),
-                        exit = scaleOut() + fadeOut()
-                    ) {
+                    // Direction arrow for this box
+                    val arrow = when (index) {
+                        0 -> Icons.Filled.ArrowUpward
+                        1 -> Icons.AutoMirrored.Filled.ArrowForward
+                        2 -> Icons.Filled.ArrowDownward
+                        else -> Icons.AutoMirrored.Filled.ArrowBack
+                    }
 
-                        /**reused the icon code that was here. modified it
-                         * a bit and kept the code that the text composable
-                         * had just in case if i needed it.
-                         */
+                    if (index == dragBoxIndex) {
+                        // Show ONLY the draggable token when it "lives" in this box
                         Icon(
-                            imageVector = Icons.Default.Face,
-                            contentDescription = "Face",
+                            imageVector = Icons.Filled.Face,     // or your circle token if you switch later
+                            contentDescription = "Drag token",
                             modifier = Modifier
-                                .padding(10.dp)
-                                .fillMaxSize()
+                                .size(36.dp)
                                 .dragAndDropSource(
                                     transferData = {
-                                        // Return non-null to start drag; Compose handles long-press for you
                                         DragAndDropTransferData(
-                                            clipData = ClipData.newPlainText("text", "")
+                                            clipData = ClipData.newPlainText("token", "face")
                                         )
                                     }
-                                )
+                                ),
+                            tint = Color.Black
+                        )
+                    } else {
+                        // Otherwise show ONLY the arrow (no drag source here)
+                        Icon(
+                            imageVector = arrow,
+                            contentDescription = when (index) {
+                                0 -> "Move Up"
+                                1 -> "Move Right"
+                                2 -> "Move Down"
+                                else -> "Move Left"
+                            },
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(36.dp),
+                            tint = Color.Black
                         )
                     }
                 }
@@ -188,6 +212,16 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 IntOffset(cx, cy)
             }
 
+            // Compute bounds IN THIS SCOPE, then publish them to the hoisted state
+            val computedMaxX = with(density) { (maxWidth - rectW).toPx().toInt() }
+            val computedMaxY = with(density) { (maxHeight - rectH).toPx().toInt() }
+
+            // Publish bounds so onDrop (above) can clamp correctly
+            LaunchedEffect(computedMaxX, computedMaxY) {
+                maxXBound = computedMaxX
+                maxYBound = computedMaxY
+            }
+
             // Set the starting target to the exact center ONCE
             LaunchedEffect(Unit) {
                 if (target == IntOffset.Zero) {
@@ -201,17 +235,27 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 animationSpec = tween(3000, easing = LinearEasing)
             )
 
-            // The rectangle
             Box(
                 modifier = Modifier
-                    .offset(pOffset.x.dp, pOffset.y.dp)   // offset first = true center
+                    .offset { pOffset }          // px overload (correct)
                     .graphicsLayer {
                         rotationZ = rtatView
                         transformOrigin = TransformOrigin.Center
                     }
-                    .background(Color.Yellow)
                     .size(rectW, rectH)
+                    .background(Color.Yellow)     // ← make it visible
+                    .border(1.dp, Color.Black)    // ← optional: outline so it pops
             )
+
+            // ===== ToDo 8: RESET BUTTON =====
+            Button(
+                onClick = { target = centerPx },                  // recenter
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp)
+            ) {
+                Text("Reset")
+            }
         }
     }
 }

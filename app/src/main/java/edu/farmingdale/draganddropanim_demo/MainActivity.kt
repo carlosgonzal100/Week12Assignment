@@ -61,9 +61,18 @@ class MainActivity : ComponentActivity() {
  * i made it rotate on its center so there you go
  */
 
-// ToDo x: Move - translate the rect horizontally and vertically
+// ToDo 7: Move - translate the rect horizontally and vertically
+/**
+ * rectangle moves up down left and right, i even added arrows
+ * so the user can tell what direction each box represents
+ */
+
 // ToDo 8: Add a button to reset the rect to the center of the screen
+/**Button that resest to the center of the screen is good*/
+
 // ToDo 9: Enable certain animation based on the drop event (like up or down)
+
+
 // ToDo 10: Make sure to commit for each one of the above and submit this individually
 
 
