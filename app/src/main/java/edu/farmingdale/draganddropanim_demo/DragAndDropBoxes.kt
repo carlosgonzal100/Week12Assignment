@@ -5,23 +5,17 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.platform.LocalDensity
 import android.content.ClipData
 import android.content.ClipDescription
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.repeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -58,6 +52,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.Animatable
 
 /**Notes:
  *
@@ -70,19 +65,27 @@ import androidx.compose.ui.unit.dp
 
 //private val rotation = FloatPropKey()
 
-
 @Composable
 fun DragAndDropBoxes(modifier: Modifier = Modifier) {
     var isPlaying by remember { mutableStateOf(true) }
 
-    /**added so the rectnagle is centered in the middle of the screen
-     * on any screen no matter what
-     */
-    var target by remember { mutableStateOf(IntOffset.Zero) } // will set to true center later
+    // Current top-left (in PX) of the yellow rectangle in the red area.
+    // Initialized to (0,0); we set to true center later.
+    var target by remember { mutableStateOf(IntOffset.Zero) }
 
-    // Max allowed top-left in PX so the rect stays fully inside the red area
+    // Bounds (in PX) so the rectangle stays fully inside the red area.
     var maxXBound by remember { mutableIntStateOf(0) }
     var maxYBound by remember { mutableIntStateOf(0) }
+
+    // Which direction was last triggered: 0=Up,1=Right,2=Down,3=Left
+    var lastDir by remember { mutableIntStateOf(-1) }
+    // "Bump" value that causes LaunchedEffect(dirTrigger) to rerun on each drop
+    var dirTrigger by remember { mutableIntStateOf(0) }
+
+    // Extra rotation (quick spin for Left/Right) layered onto your base rotation
+    val extraRotation = remember { Animatable(0f) }
+    // Scale pulse (brief pop) for Up/Down
+    val scalePulse   = remember { Animatable(1f) }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -92,6 +95,7 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 .weight(0.2f)
         ) {
             val boxCount = 4
+
             var dragBoxIndex by remember {
                 mutableIntStateOf(0)
             }
@@ -113,7 +117,11 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                                         isPlaying = !isPlaying
                                         dragBoxIndex = index
 
-                                        // Propose the next position in PX (move farther per drop)
+                                        // Record direction + trigger
+                                        lastDir = index
+                                        dirTrigger += 1
+
+                                        // Compute next position by a fixed step (in PX)
                                         val moveStep = 250 // increase this value to move more
                                         val next = when (index) {
                                             0 -> IntOffset(target.x, target.y - moveStep) // Up
@@ -122,7 +130,7 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                                             else -> IntOffset(target.x - moveStep, target.y) // Left
                                         }
 
-                                        // Clamp using the hoisted bounds (no maxPx scope issue)
+                                        // Clamp so the rectangle stays fully visible
                                         target = IntOffset(
                                             x = next.x.coerceIn(0, maxXBound),
                                             y = next.y.coerceIn(0, maxYBound)
@@ -134,7 +142,7 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Direction arrow for this box
+                    // Static arrow label for this command box
                     val arrow = when (index) {
                         0 -> Icons.Filled.ArrowUpward
                         1 -> Icons.AutoMirrored.Filled.ArrowForward
@@ -143,9 +151,9 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                     }
 
                     if (index == dragBoxIndex) {
-                        // Show ONLY the draggable token when it "lives" in this box
+
                         Icon(
-                            imageVector = Icons.Filled.Face,     // or your circle token if you switch later
+                            imageVector = Icons.Filled.Face,
                             contentDescription = "Drag token",
                             modifier = Modifier
                                 .size(36.dp)
@@ -159,7 +167,8 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                             tint = Color.Black
                         )
                     } else {
-                        // Otherwise show ONLY the arrow (no drag source here)
+
+                        //if the icon is not in the box, display the arrow
                         Icon(
                             imageVector = arrow,
                             contentDescription = when (index) {
@@ -178,16 +187,9 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
             }
         }
 
-        /**made by chat gpt to help translate the rectangle
-         * left right up and down. for to do 7, uses step to
-         * determine where the icon is on to move the rectangle
-         * up down left and right
-         */
-
 
         val rtatView by animateFloatAsState(
             targetValue = if (isPlaying) 360f else 0.0f,
-            // Configure the animation duration and easing.
             animationSpec = repeatable(
                 iterations = if (isPlaying) 10 else 1,
                 tween(durationMillis = 3000, easing = LinearEasing),
@@ -200,11 +202,11 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 .weight(0.8f)
                 .background(Color.Red)
         ) {
-            // Rectangle size (keep these in one place)
+            // Rectangle size
             val rectW = 60.dp
             val rectH = 20.dp
 
-            // Compute the TRUE center of the red area in PX, then center the rect
+            // Compute true visual center (top-left px so the rect is centered)
             val density = LocalDensity.current
             val centerPx = with(density) {
                 val cx = ((maxWidth - rectW) / 2).toPx().toInt()
@@ -212,44 +214,72 @@ fun DragAndDropBoxes(modifier: Modifier = Modifier) {
                 IntOffset(cx, cy)
             }
 
-            // Compute bounds IN THIS SCOPE, then publish them to the hoisted state
+            // Publish bounds (px) so top row can clamp movement
             val computedMaxX = with(density) { (maxWidth - rectW).toPx().toInt() }
             val computedMaxY = with(density) { (maxHeight - rectH).toPx().toInt() }
-
-            // Publish bounds so onDrop (above) can clamp correctly
             LaunchedEffect(computedMaxX, computedMaxY) {
                 maxXBound = computedMaxX
                 maxYBound = computedMaxY
             }
 
-            // Set the starting target to the exact center ONCE
+            LaunchedEffect(dirTrigger) {
+                when (lastDir) {
+
+                               //when the rectangle moves up or down, it does a quick pulse
+                    0, 2 -> {
+                        scalePulse.snapTo(1f)
+                        scalePulse.animateTo(1.15f, animationSpec = tween(140, easing = LinearEasing))
+                        scalePulse.animateTo(1f,    animationSpec = tween(140, easing = LinearEasing))
+                    }
+                    1 -> { //when it moves to the right, it does a full spin to the right and keeps moving
+                        extraRotation.snapTo(0f)
+                        extraRotation.animateTo(360f, animationSpec = tween(300, easing = LinearEasing))
+                        extraRotation.snapTo(0f)
+                    }
+                    3 -> { //when it moves to the left, it does a full spin to the left and keeps moving
+                        extraRotation.snapTo(0f)
+                        extraRotation.animateTo(-360f, animationSpec = tween(300, easing = LinearEasing))
+                        extraRotation.snapTo(0f)
+                    }
+                }
+            }
+
+            // Set initial position to the true center of the screen
             LaunchedEffect(Unit) {
                 if (target == IntOffset.Zero) {
                     target = centerPx
                 }
             }
 
-            // Animate from current to target
+
             val pOffset by animateIntOffsetAsState(
                 targetValue = target,
                 animationSpec = tween(3000, easing = LinearEasing)
             )
 
+            // The yellow rectangle on the screen
             Box(
                 modifier = Modifier
-                    .offset { pOffset }          // px overload (correct)
+                    .offset { pOffset }
                     .graphicsLayer {
-                        rotationZ = rtatView
+
+                        //causes the base rotation plus the extra rotation
+                        //when moving the rectangle left or right
+                        rotationZ = rtatView + extraRotation.value
                         transformOrigin = TransformOrigin.Center
+
+                        //causes the scale pulse when moving up or down
+                        scaleX = scalePulse.value
+                        scaleY = scalePulse.value
                     }
                     .size(rectW, rectH)
-                    .background(Color.Yellow)     // ← make it visible
-                    .border(1.dp, Color.Black)    // ← optional: outline so it pops
+                    .background(Color.Yellow)
+                    .border(1.dp, Color.Black)
             )
 
-            // ===== ToDo 8: RESET BUTTON =====
+            //the reset button, instantly resets the rectangle to the center
             Button(
-                onClick = { target = centerPx },                  // recenter
+                onClick = { target = centerPx },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(12.dp)
